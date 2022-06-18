@@ -1,11 +1,14 @@
+use glutin::event_loop::EventLoop;
+use glutin::window::WindowBuilder;
+use glutin::{ContextBuilder, GlProfile, GlRequest};
+
 use std::mem::size_of;
 
 use glow::{
-	HasContext, NativeBuffer, NativeProgram, NativeVertexArray, ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER, FLOAT, FRAGMENT_SHADER, STATIC_DRAW, TRIANGLES, UNSIGNED_BYTE, VERTEX_SHADER
+	HasContext, NativeBuffer, NativeProgram, NativeVertexArray, ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER, FLOAT, FRAGMENT_SHADER, STATIC_DRAW, TRIANGLES, UNSIGNED_BYTE, VERTEX_SHADER,
 };
-
-use crate::framework::driver::{GlContext, Plugin};
-use crate::utils::as_bytes;
+use cg_final::framework::driver::{App, GlContext, Plugin};
+use cg_final::utils::as_bytes;
 
 #[repr(C, packed)]
 struct Vertex {
@@ -100,4 +103,19 @@ impl Plugin for TriangleDemoRenderer {
 			gl.draw_elements(TRIANGLES, 6, UNSIGNED_BYTE, 0);
 		}
 	}
+}
+
+fn main() {
+	let event_loop = EventLoop::new();
+	let window_builder = WindowBuilder::new().with_title("CG Final Project");
+	let context = ContextBuilder::new()
+		.with_gl(GlRequest::Latest)
+		.with_gl_profile(GlProfile::Core)
+		.build_windowed(window_builder, &event_loop)
+		.unwrap();
+
+	// safety: Only 1 GL Context throughout the program.
+	let context = unsafe { context.make_current().unwrap() };
+
+	App::new(event_loop, context).with_plugin(TriangleDemoRenderer::new_boxed).run();
 }
