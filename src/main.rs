@@ -1,7 +1,7 @@
 #![feature(const_size_of_val)]
 #![feature(const_slice_from_raw_parts)]
 
-use business::scratch::BasicRenderer;
+use business::triange_demo_renderer::TriangleDemoRenderer;
 use glutin::event_loop::EventLoop;
 use glutin::window::WindowBuilder;
 use glutin::{ContextBuilder, GlProfile, GlRequest};
@@ -24,5 +24,5 @@ fn main() {
 	// safety: Only 1 GL Context throughout the program.
 	let context = unsafe { context.make_current().unwrap() };
 
-	App::new(event_loop, context).with_plugin(BasicRenderer::new_boxed).run();
+	App::new(event_loop, context).with_plugin(TriangleDemoRenderer::new_boxed).run();
 }

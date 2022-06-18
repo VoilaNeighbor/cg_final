@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use glow::{
-	HasContext, NativeBuffer, NativeProgram, NativeVertexArray, ARRAY_BUFFER, DYNAMIC_DRAW, FLOAT, FRAGMENT_SHADER, TRIANGLES, VERTEX_SHADER
+	HasContext, NativeBuffer, NativeProgram, NativeVertexArray, ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER, FLOAT, FRAGMENT_SHADER, STATIC_DRAW, TRIANGLES, UNSIGNED_BYTE, VERTEX_SHADER
 };
 
 use crate::framework::driver::{GlContext, Plugin};
@@ -12,19 +12,23 @@ struct Vertex {
 	position: [f32; 2],
 }
 
-const VERTICES: [Vertex; 3] = [
-	Vertex { position: [0.0, 0.5] },
+const VERTICES: [Vertex; 4] = [
+	Vertex { position: [-0.5, 0.5] },
 	Vertex { position: [0.5, -0.5] },
+	Vertex { position: [0.5, 0.5] },
 	Vertex { position: [-0.5, -0.5] },
 ];
 
-pub struct BasicRenderer {
+const ELEMENTS: [u8; 6] = [0, 2, 3, 3, 2, 1];
+
+pub struct TriangleDemoRenderer {
 	vao: NativeVertexArray,
 	program: NativeProgram,
 	_vbo: NativeBuffer,
+	_ebo: NativeBuffer,
 }
 
-impl BasicRenderer {
+impl TriangleDemoRenderer {
 	pub fn new_boxed(gl: &GlContext) -> Box<dyn Plugin> {
 		unsafe {
 			let vert_shader = gl.create_shader(VERTEX_SHADER).unwrap();
@@ -32,7 +36,9 @@ impl BasicRenderer {
 				vert_shader,
 				r#"#version 460 core
 				layout(location = 0) in vec2 position;
+				out vec2 pos;
 				void main() {
+					pos = position;
 					gl_Position = vec4(position, 0.0, 1.0);
 				}"#,
 			);
@@ -45,9 +51,10 @@ impl BasicRenderer {
 			gl.shader_source(
 				frag_shader,
 				r#"#version 460 core
+				in vec2 pos;
 				out vec4 color;
 				void main() {
-					color = vec4(0.7, 0.8, 0.9, 1.0);
+					color = vec4((pos.x + 1.) / 2., (pos.y + 1.) / 2., 0.9, 1.0);
 				}"#,
 			);
 			gl.compile_shader(frag_shader);
@@ -67,24 +74,30 @@ impl BasicRenderer {
 
 			let vbo = gl.create_buffer().unwrap();
 			gl.bind_buffer(ARRAY_BUFFER, Some(vbo));
-			gl.buffer_data_u8_slice(ARRAY_BUFFER, as_bytes(&VERTICES), DYNAMIC_DRAW);
+			gl.buffer_data_u8_slice(ARRAY_BUFFER, as_bytes(&VERTICES), STATIC_DRAW);
 
 			let vao = gl.create_vertex_array().unwrap();
 			gl.bind_vertex_array(Some(vao));
 			gl.enable_vertex_attrib_array(0);
 			gl.vertex_attrib_pointer_f32(0, 2, FLOAT, false, size_of::<Vertex>() as _, 0);
 
-			Box::new(Self { vao, _vbo: vbo, program })
+			// Bind after VAO so that it is bound to the VAO, and we don't need to
+			// bind it when rendering.
+			let ebo = gl.create_buffer().unwrap();
+			gl.bind_buffer(ELEMENT_ARRAY_BUFFER, Some(ebo));
+			gl.buffer_data_u8_slice(ELEMENT_ARRAY_BUFFER, as_bytes(&ELEMENTS), STATIC_DRAW);
+
+			Box::new(Self { vao, _vbo: vbo, program, _ebo: ebo })
 		}
 	}
 }
 
-impl Plugin for BasicRenderer {
+impl Plugin for TriangleDemoRenderer {
 	fn render(&self, gl: &GlContext) {
 		unsafe {
 			gl.use_program(Some(self.program));
 			gl.bind_vertex_array(Some(self.vao));
-			gl.draw_arrays(TRIANGLES, 0, 3);
+			gl.draw_elements(TRIANGLES, 6, UNSIGNED_BYTE, 0);
 		}
 	}
 }
