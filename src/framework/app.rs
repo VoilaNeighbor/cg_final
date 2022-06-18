@@ -1,8 +1,8 @@
 pub use glow::Context as GlContext;
 use glutin::event::{Event, WindowEvent};
 use glutin::event_loop::{ControlFlow, EventLoop};
-use glutin::window::Window;
-use glutin::{ContextWrapper as WinContext, PossiblyCurrent};
+use glutin::window::{Window, WindowBuilder};
+use glutin::{ContextBuilder, ContextWrapper as WinContext, GlProfile, GlRequest, PossiblyCurrent};
 
 pub trait Plugin {
 	fn render(&self, gl: &GlContext);
@@ -13,6 +13,23 @@ pub struct App {
 	gl_ctx: GlContext,
 	win_ctx: WinContext<PossiblyCurrent, Window>,
 	plugins: Vec<Box<dyn Plugin>>,
+}
+
+impl Default for App {
+	fn default() -> Self {
+		let event_loop = EventLoop::new();
+		let window_builder = WindowBuilder::new().with_title("CG Final Project");
+		let context = ContextBuilder::new()
+			.with_gl(GlRequest::Latest)
+			.with_gl_profile(GlProfile::Core)
+			.build_windowed(window_builder, &event_loop)
+			.unwrap();
+
+		// safety: Only 1 GL Context throughout the program.
+		let context = unsafe { context.make_current().unwrap() };
+
+		Self::new(event_loop, context)
+	}
 }
 
 impl App {

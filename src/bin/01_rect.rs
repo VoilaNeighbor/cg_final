@@ -1,14 +1,10 @@
-use glutin::event_loop::EventLoop;
-use glutin::window::WindowBuilder;
-use glutin::{ContextBuilder, GlProfile, GlRequest};
-
 use std::mem::size_of;
 
-use glow::{
-	HasContext, NativeBuffer, NativeProgram, NativeVertexArray, ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER, FLOAT, FRAGMENT_SHADER, STATIC_DRAW, TRIANGLES, UNSIGNED_BYTE, VERTEX_SHADER,
-};
-use cg_final::framework::driver::{App, GlContext, Plugin};
+use cg_final::framework::app::{App, GlContext, Plugin};
 use cg_final::utils::as_bytes;
+use glow::{
+	HasContext, NativeBuffer, NativeProgram, NativeVertexArray, ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER, FLOAT, FRAGMENT_SHADER, STATIC_DRAW, TRIANGLES, UNSIGNED_BYTE, VERTEX_SHADER
+};
 
 #[repr(C, packed)]
 struct Vertex {
@@ -24,14 +20,14 @@ const VERTICES: [Vertex; 4] = [
 
 const ELEMENTS: [u8; 6] = [0, 2, 3, 3, 2, 1];
 
-pub struct TriangleDemoRenderer {
+pub struct RectangleDemoRenderer {
 	vao: NativeVertexArray,
 	program: NativeProgram,
 	_vbo: NativeBuffer,
 	_ebo: NativeBuffer,
 }
 
-impl TriangleDemoRenderer {
+impl RectangleDemoRenderer {
 	pub fn new_boxed(gl: &GlContext) -> Box<dyn Plugin> {
 		unsafe {
 			let vert_shader = gl.create_shader(VERTEX_SHADER).unwrap();
@@ -95,7 +91,7 @@ impl TriangleDemoRenderer {
 	}
 }
 
-impl Plugin for TriangleDemoRenderer {
+impl Plugin for RectangleDemoRenderer {
 	fn render(&self, gl: &GlContext) {
 		unsafe {
 			gl.use_program(Some(self.program));
@@ -106,16 +102,5 @@ impl Plugin for TriangleDemoRenderer {
 }
 
 fn main() {
-	let event_loop = EventLoop::new();
-	let window_builder = WindowBuilder::new().with_title("CG Final Project");
-	let context = ContextBuilder::new()
-		.with_gl(GlRequest::Latest)
-		.with_gl_profile(GlProfile::Core)
-		.build_windowed(window_builder, &event_loop)
-		.unwrap();
-
-	// safety: Only 1 GL Context throughout the program.
-	let context = unsafe { context.make_current().unwrap() };
-
-	App::new(event_loop, context).with_plugin(TriangleDemoRenderer::new_boxed).run();
+	App::default().with_plugin(RectangleDemoRenderer::new_boxed).run();
 }
