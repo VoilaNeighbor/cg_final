@@ -1,0 +1,10 @@
+hard_tabs = true
+tab_spaces = 2
+use_small_heuristics = "Max"
+imports_layout = "Horizontal"
+imports_granularity = "Module"
+normalize_comments = true
+normalize_doc_attributes = true
+reorder_impl_items = true
+group_imports = "StdExternalCrate"
+reorder_modules = true
