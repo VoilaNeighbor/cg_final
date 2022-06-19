@@ -2,11 +2,14 @@
 #![feature(const_slice_from_raw_parts)]
 #![feature(default_free_fn)]
 
+use std::default::default;
+
 use glutin::event::WindowEvent;
 use glutin::window::Window;
 use glutin::{ContextWrapper, PossiblyCurrent};
 
 use crate::framework::app::{App, AppComponent};
+use crate::graphics::camera::Camera;
 use crate::graphics::renderer::Renderer;
 use crate::misc::window_info_tracker::WindowInfoTracker;
 
@@ -20,6 +23,7 @@ pub type WinContext = ContextWrapper<PossiblyCurrent, Window>;
 struct MainComponents {
 	renderer: Renderer,
 	window_info_tracker: WindowInfoTracker,
+	camera: Camera,
 }
 
 impl MainComponents {
@@ -27,6 +31,7 @@ impl MainComponents {
 		Self {
 			renderer: Renderer::new(app.gl()),
 			window_info_tracker: WindowInfoTracker::new(app.window()),
+			camera: default(),
 		}
 	}
 }
@@ -36,8 +41,8 @@ impl AppComponent for MainComponents {
 		self.window_info_tracker.on_window_event(event);
 	}
 
-	fn render(&self, gl: &GlContext) {
-		self.renderer.render(gl, &self.window_info_tracker);
+	unsafe fn render(&self, gl: &GlContext) {
+		self.renderer.render(gl, &self.window_info_tracker, &self.camera);
 	}
 }
 

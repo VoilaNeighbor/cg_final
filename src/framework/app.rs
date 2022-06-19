@@ -8,7 +8,7 @@ use crate::{GlContext, WinContext};
 
 pub trait AppComponent {
 	fn on_window_event(&mut self, event: &WindowEvent);
-	fn render(&self, gl: &GlContext);
+	unsafe fn render(&self, gl: &GlContext);
 }
 
 pub struct App {
