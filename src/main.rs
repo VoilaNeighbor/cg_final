@@ -1,0 +1,50 @@
+#![feature(const_size_of_val)]
+#![feature(const_slice_from_raw_parts)]
+#![feature(default_free_fn)]
+
+use glutin::event::WindowEvent;
+use glutin::window::Window;
+use glutin::{ContextWrapper, PossiblyCurrent};
+
+use crate::framework::app::{App, AppComponent};
+use crate::misc::window_info_tracker::WindowInfoTracker;
+use crate::render::renderer::Renderer;
+
+mod framework;
+mod misc;
+mod render;
+
+pub type GlContext = glow::Context;
+pub type WinContext = ContextWrapper<PossiblyCurrent, Window>;
+
+struct MainComponents {
+	renderer: Renderer,
+	window_info_tracker: WindowInfoTracker,
+}
+
+impl MainComponents {
+	pub fn new(app: &App) -> Self {
+		Self {
+			renderer: Renderer::new(app.gl()),
+			window_info_tracker: WindowInfoTracker::new(app.window()),
+		}
+	}
+}
+
+impl AppComponent for MainComponents {
+	fn on_window_event(&mut self, event: &WindowEvent) {
+		self.window_info_tracker.on_window_event(event);
+	}
+
+	fn render(&self, gl: &GlContext) {
+		self.renderer.render(gl, &self.window_info_tracker);
+	}
+}
+
+fn main() {
+	unsafe {
+		let app = App::new();
+		let main_component = MainComponents::new(&app);
+		app.run(main_component);
+	}
+}

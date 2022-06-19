@@ -2,12 +2,14 @@ use std::f32::consts::PI;
 use std::mem::size_of;
 use std::time::Instant;
 
-use cg_final::framework::app::{App, GlContext, Plugin};
-use cg_final::utils::as_bytes;
 use glow::{
 	HasContext, NativeProgram, NativeTexture, ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER, FLOAT, FRAGMENT_SHADER, NEAREST, RGBA, RGBA8, STATIC_DRAW, TEXTURE0, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER, TRIANGLES, UNSIGNED_BYTE, VERTEX_SHADER
 };
 use nalgebra::{Matrix4, Unit, Vector3};
+
+use crate::misc::as_bytes;
+use crate::misc::window_info_tracker::WindowInfoTracker;
+use crate::GlContext;
 
 #[repr(C, packed)]
 struct Vertex {
@@ -68,14 +70,67 @@ const ELEMENTS: [u8; 36] = [
 	20, 21, 22, 22, 23, 20, // bottom
 ];
 
-struct Demo {
+pub struct Renderer {
 	program: NativeProgram,
 	start: Instant,
 }
 
-impl Plugin for Demo {
+impl Renderer {
+	pub fn new(gl: &GlContext) -> Self {
+		unsafe {
+			let vao = gl.create_vertex_array().unwrap();
+			gl.bind_vertex_array(Some(vao));
+
+			let vbo = gl.create_buffer().unwrap();
+			gl.bind_buffer(ARRAY_BUFFER, Some(vbo));
+			gl.buffer_data_u8_slice(ARRAY_BUFFER, as_bytes(&VERTICES), STATIC_DRAW);
+
+			Vertex::format_attribs(gl);
+
+			// Bind after VAO so that it is bound to the VAO, and we don't need to bind it when rendering.
+			let ebo = gl.create_buffer().unwrap();
+			gl.bind_buffer(ELEMENT_ARRAY_BUFFER, Some(ebo));
+			gl.buffer_data_u8_slice(ELEMENT_ARRAY_BUFFER, as_bytes(&ELEMENTS), STATIC_DRAW);
+
+			let vert_shader = gl.create_shader(VERTEX_SHADER).unwrap();
+			gl.shader_source(vert_shader, include_str!("vert.glsl"));
+			gl.compile_shader(vert_shader);
+			if !gl.get_shader_compile_status(vert_shader) {
+				panic!("{}", gl.get_shader_info_log(vert_shader));
+			}
+
+			let frag_shader = gl.create_shader(FRAGMENT_SHADER).unwrap();
+			gl.shader_source(frag_shader, include_str!("frag.glsl"));
+			gl.compile_shader(frag_shader);
+			if !gl.get_shader_compile_status(frag_shader) {
+				panic!("{}", gl.get_shader_info_log(frag_shader));
+			}
+
+			let program = gl.create_program().unwrap();
+			gl.attach_shader(program, vert_shader);
+			gl.attach_shader(program, frag_shader);
+			gl.link_program(program);
+			if !gl.get_program_link_status(program) {
+				panic!("{}", gl.get_program_info_log(program));
+			}
+			gl.delete_shader(frag_shader);
+			gl.delete_shader(vert_shader);
+			gl.use_program(Some(program));
+
+			gl.active_texture(TEXTURE0);
+			autobind_texture(gl, include_bytes!("../../assets/textures/wall.jpg"));
+			gl.uniform_1_i32(gl.get_uniform_location(program, "wall_tex").as_ref(), 0);
+
+			gl.active_texture(TEXTURE0 + 1);
+			autobind_texture(gl, include_bytes!("../../assets/textures/awesomeface.png"));
+			gl.uniform_1_i32(gl.get_uniform_location(program, "face_tex").as_ref(), 1);
+
+			Self { program, start: Instant::now() }
+		}
+	}
+
 	#[rustfmt::skip]
-	fn render(&self, gl: &GlContext) {
+	pub fn render(&self, gl: &GlContext, window_info: &WindowInfoTracker) {
 		unsafe {
 			let time = self.start.elapsed().as_secs_f32();
 
@@ -86,12 +141,12 @@ impl Plugin for Demo {
 			let view = Matrix4::new(
 				1.0, 0.0, 0.0, 0.0,
 				0.0, 1.0, 0.0, 0.0,
-				0.0, 0.0, 1.0, -3.0,
+				0.0, 0.0, 1.0, -4.0,
 				0.0, 0.0, 0.0, 1.0,
 			);
 
-			// todo: Add a window plugin from which we can get window aspect.
-			let projection = Matrix4::new_perspective(16.0 / 9.0, PI * 0.3, 0.1, 100.0);
+			let aspect = window_info.width as f32 / window_info.height as f32;
+			let projection = Matrix4::new_perspective(aspect, PI * 0.3, 0.1, 100.0);
 
 			gl.uniform_matrix_4_f32_slice(
 				gl.get_uniform_location(self.program, "mvp").as_ref(),
@@ -140,84 +195,4 @@ unsafe fn autobind_texture(gl: &GlContext, img: &[u8]) -> NativeTexture {
 		Some(&img),
 	);
 	tex
-}
-
-fn main() {
-	App::default()
-		.with_plugin(|gl| unsafe {
-			let vao = gl.create_vertex_array().unwrap();
-			gl.bind_vertex_array(Some(vao));
-
-			let vbo = gl.create_buffer().unwrap();
-			gl.bind_buffer(ARRAY_BUFFER, Some(vbo));
-			gl.buffer_data_u8_slice(ARRAY_BUFFER, as_bytes(&VERTICES), STATIC_DRAW);
-
-			Vertex::format_attribs(gl);
-
-			// Bind after VAO so that it is bound to the VAO, and we don't need to bind it when rendering.
-			let ebo = gl.create_buffer().unwrap();
-			gl.bind_buffer(ELEMENT_ARRAY_BUFFER, Some(ebo));
-			gl.buffer_data_u8_slice(ELEMENT_ARRAY_BUFFER, as_bytes(&ELEMENTS), STATIC_DRAW);
-
-			let vert_shader = gl.create_shader(VERTEX_SHADER).unwrap();
-			gl.shader_source(
-				vert_shader,
-				r#"#version 460 core
-				layout(location = 0) in vec3 in_position;
-				layout(location = 1) in vec2 in_tex_coord;
-				uniform mat4 mvp;
-				out vec2 tex_coord;
-				void main() {
-					tex_coord = in_tex_coord;
-					gl_Position = mvp * vec4(in_position, 1.0);
-				}"#,
-			);
-			gl.compile_shader(vert_shader);
-			if !gl.get_shader_compile_status(vert_shader) {
-				panic!("{}", gl.get_shader_info_log(vert_shader));
-			}
-
-			let frag_shader = gl.create_shader(FRAGMENT_SHADER).unwrap();
-			gl.shader_source(
-				frag_shader,
-				r#"#version 460 core
-				in vec2 tex_coord;
-				uniform sampler2D wall_tex;
-				uniform sampler2D face_tex;
-				out vec4 color;
-				void main() {
-					color = mix(
-						texture(wall_tex, tex_coord),
-						texture(face_tex, tex_coord),
-						0.3
-					);
-				}"#,
-			);
-			gl.compile_shader(frag_shader);
-			if !gl.get_shader_compile_status(frag_shader) {
-				panic!("{}", gl.get_shader_info_log(frag_shader));
-			}
-
-			let program = gl.create_program().unwrap();
-			gl.attach_shader(program, vert_shader);
-			gl.attach_shader(program, frag_shader);
-			gl.link_program(program);
-			if !gl.get_program_link_status(program) {
-				panic!("{}", gl.get_program_info_log(program));
-			}
-			gl.delete_shader(frag_shader);
-			gl.delete_shader(vert_shader);
-			gl.use_program(Some(program));
-
-			gl.active_texture(TEXTURE0);
-			autobind_texture(gl, include_bytes!("../../assets/textures/wall.jpg"));
-			gl.uniform_1_i32(gl.get_uniform_location(program, "wall_tex").as_ref(), 0);
-
-			gl.active_texture(TEXTURE0 + 1);
-			autobind_texture(gl, include_bytes!("../../assets/textures/awesomeface.png"));
-			gl.uniform_1_i32(gl.get_uniform_location(program, "face_tex").as_ref(), 1);
-
-			Box::new(Demo { program, start: Instant::now() })
-		})
-		.run()
 }
