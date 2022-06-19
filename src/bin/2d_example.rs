@@ -14,6 +14,17 @@ struct Vertex {
 	tex_coord: [f32; 2],
 }
 
+impl Vertex {
+	/// # Safety
+	/// VAO and VBO should be properly set up.
+	unsafe fn format_attribs(gl: &GlContext) {
+		gl.enable_vertex_attrib_array(0);
+		gl.vertex_attrib_pointer_f32(0, 2, FLOAT, false, size_of::<Vertex>() as _, 0);
+		gl.enable_vertex_attrib_array(1);
+		gl.vertex_attrib_pointer_f32(1, 2, FLOAT, false, size_of::<Vertex>() as _, 8);
+	}
+}
+
 const VERTICES: [Vertex; 4] = [
 	Vertex { position: [-0.5, 0.5], tex_coord: [0.0, 1.0] },
 	Vertex { position: [0.5, -0.5], tex_coord: [1.0, 0.0] },
@@ -105,11 +116,7 @@ fn main() {
 			gl.bind_buffer(ARRAY_BUFFER, Some(vbo));
 			gl.buffer_data_u8_slice(ARRAY_BUFFER, as_bytes(&VERTICES), STATIC_DRAW);
 
-			// Vertex Attributes after both VAO and VBO are properly set up.
-			gl.enable_vertex_attrib_array(0);
-			gl.vertex_attrib_pointer_f32(0, 2, FLOAT, false, size_of::<Vertex>() as _, 0);
-			gl.enable_vertex_attrib_array(1);
-			gl.vertex_attrib_pointer_f32(1, 2, FLOAT, false, size_of::<Vertex>() as _, 8);
+			Vertex::format_attribs(gl);
 
 			// Bind after VAO so that it is bound to the VAO, and we don't need to bind it when rendering.
 			let ebo = gl.create_buffer().unwrap();
@@ -133,6 +140,7 @@ fn main() {
 			if !gl.get_shader_compile_status(vert_shader) {
 				panic!("{}", gl.get_shader_info_log(vert_shader));
 			}
+
 			let frag_shader = gl.create_shader(FRAGMENT_SHADER).unwrap();
 			gl.shader_source(
 				frag_shader,
@@ -153,6 +161,7 @@ fn main() {
 			if !gl.get_shader_compile_status(frag_shader) {
 				panic!("{}", gl.get_shader_info_log(frag_shader));
 			}
+
 			let program = gl.create_program().unwrap();
 			gl.attach_shader(program, vert_shader);
 			gl.attach_shader(program, frag_shader);
