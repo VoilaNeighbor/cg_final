@@ -1,5 +1,5 @@
 pub use glow::Context as GlContext;
-use glow::{HasContext, COLOR_BUFFER_BIT};
+use glow::{HasContext, COLOR_BUFFER_BIT, DEPTH_BUFFER_BIT, DEPTH_TEST};
 use glutin::event::{Event, WindowEvent};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Window, WindowBuilder};
@@ -8,7 +8,8 @@ use glutin::{
 };
 
 pub trait Plugin {
-	fn render(&self, gl: &GlContext);
+	fn render(&self, _: &GlContext) {}
+	fn on_window_event(&mut self, _: &WindowEvent) {}
 }
 
 pub struct App {
@@ -40,7 +41,11 @@ impl App {
 		Self {
 			event_loop,
 			// safety: Well, GL is inherently unsafe. :P
-			gl_ctx: unsafe { GlContext::from_loader_function(|s| win_ctx.get_proc_address(s)) },
+			gl_ctx: unsafe {
+				let gl = GlContext::from_loader_function(|s| win_ctx.get_proc_address(s));
+				gl.enable(DEPTH_TEST);
+				gl
+			},
 			win_ctx,
 			plugins: Vec::new(),
 		}
@@ -54,13 +59,18 @@ impl App {
 		self
 	}
 
-	pub fn run(self) {
+	pub fn run(mut self) {
 		self.event_loop.run(move |event, _, ctrl| match event {
 			Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => *ctrl = ControlFlow::Exit,
+			Event::WindowEvent { event, .. } => {
+				for plugin in &mut self.plugins {
+					plugin.on_window_event(&event);
+				}
+			}
 			Event::MainEventsCleared => {
 				unsafe {
 					self.gl_ctx.clear_color(0.2, 0.2, 0.2, 1.0);
-					self.gl_ctx.clear(COLOR_BUFFER_BIT);
+					self.gl_ctx.clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
 				}
 				for p in &self.plugins {
 					p.render(&self.gl_ctx);

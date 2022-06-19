@@ -1,16 +1,17 @@
+use std::f32::consts::PI;
 use std::mem::size_of;
 use std::time::Instant;
 
 use cg_final::framework::app::{App, GlContext, Plugin};
 use cg_final::utils::as_bytes;
 use glow::{
-	HasContext, NativeBuffer, NativeProgram, NativeTexture, NativeVertexArray, ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER, FLOAT, FRAGMENT_SHADER, NEAREST, RGBA, RGBA8, STATIC_DRAW, TEXTURE0, TEXTURE1, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER, TRIANGLES, UNSIGNED_BYTE, VERTEX_SHADER
+	HasContext, NativeProgram, NativeTexture, ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER, FLOAT, FRAGMENT_SHADER, NEAREST, RGBA, RGBA8, STATIC_DRAW, TEXTURE0, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER, TRIANGLES, UNSIGNED_BYTE, VERTEX_SHADER
 };
-use nalgebra::{Matrix4, Vector3};
+use nalgebra::{Matrix4, Unit, Vector3};
 
 #[repr(C, packed)]
 struct Vertex {
-	position: [f32; 2],
+	position: [f32; 3],
 	tex_coord: [f32; 2],
 }
 
@@ -19,51 +20,86 @@ impl Vertex {
 	/// VAO and VBO should be properly set up.
 	unsafe fn format_attribs(gl: &GlContext) {
 		gl.enable_vertex_attrib_array(0);
-		gl.vertex_attrib_pointer_f32(0, 2, FLOAT, false, size_of::<Vertex>() as _, 0);
+		gl.vertex_attrib_pointer_f32(0, 3, FLOAT, false, size_of::<Vertex>() as _, 0);
 		gl.enable_vertex_attrib_array(1);
-		gl.vertex_attrib_pointer_f32(1, 2, FLOAT, false, size_of::<Vertex>() as _, 8);
+		gl.vertex_attrib_pointer_f32(1, 2, FLOAT, false, size_of::<Vertex>() as _, 12);
 	}
 }
 
-const VERTICES: [Vertex; 4] = [
-	Vertex { position: [-0.5, 0.5], tex_coord: [0.0, 1.0] },
-	Vertex { position: [0.5, -0.5], tex_coord: [1.0, 0.0] },
-	Vertex { position: [0.5, 0.5], tex_coord: [1.0, 1.0] },
-	Vertex { position: [-0.5, -0.5], tex_coord: [0.0, 0.0] },
+const VERTICES: [Vertex; 24] = [
+	// left
+	Vertex { position: [-0.5, -0.5, -0.5], tex_coord: [0.0, 0.0] },
+	Vertex { position: [-0.5, -0.5, 0.5], tex_coord: [0.0, 1.0] },
+	Vertex { position: [-0.5, 0.5, 0.5], tex_coord: [1.0, 1.0] },
+	Vertex { position: [-0.5, 0.5, -0.5], tex_coord: [1.0, 0.0] },
+	// right
+	Vertex { position: [0.5, -0.5, -0.5], tex_coord: [0.0, 0.0] },
+	Vertex { position: [0.5, -0.5, 0.5], tex_coord: [0.0, 1.0] },
+	Vertex { position: [0.5, 0.5, 0.5], tex_coord: [1.0, 1.0] },
+	Vertex { position: [0.5, 0.5, -0.5], tex_coord: [1.0, 0.0] },
+	// front
+	Vertex { position: [-0.5, -0.5, 0.5], tex_coord: [0.0, 0.0] },
+	Vertex { position: [-0.5, 0.5, 0.5], tex_coord: [0.0, 1.0] },
+	Vertex { position: [0.5, 0.5, 0.5], tex_coord: [1.0, 1.0] },
+	Vertex { position: [0.5, -0.5, 0.5], tex_coord: [1.0, 0.0] },
+	// back
+	Vertex { position: [-0.5, -0.5, -0.5], tex_coord: [0.0, 0.0] },
+	Vertex { position: [-0.5, 0.5, -0.5], tex_coord: [0.0, 1.0] },
+	Vertex { position: [0.5, 0.5, -0.5], tex_coord: [1.0, 1.0] },
+	Vertex { position: [0.5, -0.5, -0.5], tex_coord: [1.0, 0.0] },
+	// top
+	Vertex { position: [-0.5, 0.5, -0.5], tex_coord: [0.0, 0.0] },
+	Vertex { position: [-0.5, 0.5, 0.5], tex_coord: [0.0, 1.0] },
+	Vertex { position: [0.5, 0.5, 0.5], tex_coord: [1.0, 1.0] },
+	Vertex { position: [0.5, 0.5, -0.5], tex_coord: [1.0, 0.0] },
+	// bottom
+	Vertex { position: [-0.5, -0.5, -0.5], tex_coord: [0.0, 0.0] },
+	Vertex { position: [-0.5, -0.5, 0.5], tex_coord: [0.0, 1.0] },
+	Vertex { position: [0.5, -0.5, 0.5], tex_coord: [1.0, 1.0] },
+	Vertex { position: [0.5, -0.5, -0.5], tex_coord: [1.0, 0.0] },
 ];
 
-const ELEMENTS: [u8; 6] = [0, 2, 3, 3, 2, 1];
+const ELEMENTS: [u8; 36] = [
+	0, 1, 2, 2, 3, 0, // left
+	4, 5, 6, 6, 7, 4, // right
+	8, 9, 10, 10, 11, 8, // front
+	12, 13, 14, 14, 15, 12, // back
+	16, 17, 18, 18, 19, 16, // top
+	20, 21, 22, 22, 23, 20, // bottom
+];
 
-struct DemoPlugin {
+struct Demo {
 	program: NativeProgram,
 	start: Instant,
 }
 
-impl Plugin for DemoPlugin {
+impl Plugin for Demo {
 	#[rustfmt::skip]
 	fn render(&self, gl: &GlContext) {
 		unsafe {
 			let time = self.start.elapsed().as_secs_f32();
-			let scale = Matrix4::new_nonuniform_scaling(&Vector3::new(
-				time.cos() + 1.0,
-				time.sin() + 1.0,
-				1.0,
-			));
-			let rotation = Matrix4::new(
-				time.cos(),  -time.sin(),  0.0, 0.0,
-				time.sin(),  time.cos(),   0.0, 0.0,
-				0.0,        0.0,           1.0, 0.0,
-				0.0,        0.0,           0.0, 1.0,
-			);
-			let translation = Matrix4::new_translation(&Vector3::new(0.4, 0.4, 0.0));
-			let transform = translation * rotation * scale;
-			gl.uniform_matrix_4_f32_slice(
-				gl.get_uniform_location(self.program, "transform").as_ref(),
-				false,
-				transform.data.as_slice(),
+
+			let rotation_axis = Vector3::new(3.0, 5.0, 7.0);
+			let rotation = Matrix4::from_axis_angle(&Unit::new_normalize(rotation_axis), time);
+			let translation = Matrix4::new_translation(&Vector3::new(time.cos(), time.sin(), 0.0));
+
+			let view = Matrix4::new(
+				1.0, 0.0, 0.0, 0.0,
+				0.0, 1.0, 0.0, 0.0,
+				0.0, 0.0, 1.0, -3.0,
+				0.0, 0.0, 0.0, 1.0,
 			);
 
-			gl.draw_elements(TRIANGLES, 6, UNSIGNED_BYTE, 0);
+			// todo: Add a window plugin from which we can get window aspect.
+			let projection = Matrix4::new_perspective(16.0 / 9.0, PI * 0.3, 0.1, 100.0);
+
+			gl.uniform_matrix_4_f32_slice(
+				gl.get_uniform_location(self.program, "mvp").as_ref(),
+				false,
+				(projection * view * translation * rotation).as_slice(),
+			);
+
+			gl.draw_elements(TRIANGLES, ELEMENTS.len() as i32, UNSIGNED_BYTE, 0);
 		}
 	}
 }
@@ -127,13 +163,13 @@ fn main() {
 			gl.shader_source(
 				vert_shader,
 				r#"#version 460 core
-				layout(location = 0) in vec2 in_position;
+				layout(location = 0) in vec3 in_position;
 				layout(location = 1) in vec2 in_tex_coord;
-				uniform mat4 transform;
+				uniform mat4 mvp;
 				out vec2 tex_coord;
 				void main() {
 					tex_coord = in_tex_coord;
-					gl_Position = transform * vec4(in_position, 0.0, 1.0);
+					gl_Position = mvp * vec4(in_position, 1.0);
 				}"#,
 			);
 			gl.compile_shader(vert_shader);
@@ -177,11 +213,11 @@ fn main() {
 			autobind_texture(gl, include_bytes!("../../assets/textures/wall.jpg"));
 			gl.uniform_1_i32(gl.get_uniform_location(program, "wall_tex").as_ref(), 0);
 
-			gl.active_texture(TEXTURE1);
+			gl.active_texture(TEXTURE0 + 1);
 			autobind_texture(gl, include_bytes!("../../assets/textures/awesomeface.png"));
 			gl.uniform_1_i32(gl.get_uniform_location(program, "face_tex").as_ref(), 1);
 
-			Box::new(DemoPlugin { program, start: Instant::now() })
+			Box::new(Demo { program, start: Instant::now() })
 		})
-		.run();
+		.run()
 }
