@@ -1,4 +1,5 @@
 pub use glow::Context as GlContext;
+use glow::{HasContext, COLOR_BUFFER_BIT};
 use glutin::event::{Event, WindowEvent};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Window, WindowBuilder};
@@ -57,6 +58,10 @@ impl App {
 		self.event_loop.run(move |event, _, ctrl| match event {
 			Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => *ctrl = ControlFlow::Exit,
 			Event::MainEventsCleared => {
+				unsafe {
+					self.gl_ctx.clear_color(0.2, 0.2, 0.2, 1.0);
+					self.gl_ctx.clear(COLOR_BUFFER_BIT);
+				}
 				for p in &self.plugins {
 					p.render(&self.gl_ctx);
 				}
