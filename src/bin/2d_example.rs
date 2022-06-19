@@ -24,12 +24,7 @@ const VERTICES: [Vertex; 4] = [
 const ELEMENTS: [u8; 6] = [0, 2, 3, 3, 2, 1];
 
 struct DemoPlugin {
-	_vao: NativeVertexArray,
-	_program: NativeProgram,
-	_vbo: NativeBuffer,
-	_ebo: NativeBuffer,
-	_wall_tex: NativeTexture,
-	_face_tex: NativeTexture,
+	program: NativeProgram,
 	start: Instant,
 }
 
@@ -50,9 +45,9 @@ impl Plugin for DemoPlugin {
 				0.0,        0.0,           0.0, 1.0,
 			);
 			let translation = Matrix4::new_translation(&Vector3::new(0.4, 0.4, 0.0));
-			let transform = translation * (rotation * scale);
+			let transform = translation * rotation * scale;
 			gl.uniform_matrix_4_f32_slice(
-				gl.get_uniform_location(self._program, "transform").as_ref(),
+				gl.get_uniform_location(self.program, "transform").as_ref(),
 				false,
 				transform.data.as_slice(),
 			);
@@ -62,10 +57,18 @@ impl Plugin for DemoPlugin {
 	}
 }
 
+/// Creates a new texture, bind to TEXTURE_2D, and return it.
+///
 /// # Safety
-/// Need to activate texture before calling.
-/// Will bind to TEXTURE_2D.
-unsafe fn make_texture(gl: &GlContext, img: &[u8]) -> NativeTexture {
+/// Need to activate before calling the texture unit in which you want it to sit.
+///
+/// # Example
+/// ```no_run
+/// gl.active_texture(TEXTURE1);
+/// autobind_texture(gl, img_bytes);
+/// gl.uniform_1_i32(gl.get_uniform_location(program, "tex").as_ref(), 1);
+/// ```
+unsafe fn autobind_texture(gl: &GlContext, img: &[u8]) -> NativeTexture {
 	let img = image::io::Reader::new(std::io::Cursor::new(img))
 		.with_guessed_format()
 		.unwrap()
@@ -162,22 +165,14 @@ fn main() {
 			gl.use_program(Some(program));
 
 			gl.active_texture(TEXTURE0);
-			let wall_tex = make_texture(gl, include_bytes!("../../assets/textures/wall.jpg"));
+			autobind_texture(gl, include_bytes!("../../assets/textures/wall.jpg"));
 			gl.uniform_1_i32(gl.get_uniform_location(program, "wall_tex").as_ref(), 0);
 
 			gl.active_texture(TEXTURE1);
-			let face_tex = make_texture(gl, include_bytes!("../../assets/textures/awesomeface.png"));
+			autobind_texture(gl, include_bytes!("../../assets/textures/awesomeface.png"));
 			gl.uniform_1_i32(gl.get_uniform_location(program, "face_tex").as_ref(), 1);
 
-			Box::new(DemoPlugin {
-				_vao: vao,
-				_program: program,
-				_vbo: vbo,
-				_ebo: ebo,
-				_wall_tex: wall_tex,
-				_face_tex: face_tex,
-				start: Instant::now(),
-			})
+			Box::new(DemoPlugin { program, start: Instant::now() })
 		})
 		.run();
 }
