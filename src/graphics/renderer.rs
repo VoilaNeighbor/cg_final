@@ -86,7 +86,6 @@ const CUBES: [Vector3<f32>; 10] = [
 
 pub struct Renderer {
 	program: NativeProgram,
-	start: Instant,
 }
 
 impl Renderer {
@@ -139,14 +138,12 @@ impl Renderer {
 			autobind_texture(gl, include_bytes!("../../assets/textures/awesomeface.png"));
 			gl.uniform_1_i32(gl.get_uniform_location(program, "face_tex").as_ref(), 1);
 
-			Self { program, start: Instant::now() }
+			Self { program }
 		}
 	}
 
 	#[rustfmt::skip]
-	pub unsafe fn render(&self, gl: &GlContext, window_info: &WindowInfoTracker, camera: &Camera) {
-		let time = self.start.elapsed().as_secs_f32();
-
+	pub unsafe fn render(&self, gl: &GlContext, window_info: &WindowInfoTracker, camera: &Camera, time: f32) {
 		let aspect = window_info.width as f32 / window_info.height as f32;
 		let projection = Matrix4::new_perspective(aspect, PI * 0.3, 0.1, 100.0);
 

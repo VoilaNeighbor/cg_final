@@ -3,6 +3,7 @@
 #![feature(default_free_fn)]
 
 use std::default::default;
+use std::time::Instant;
 
 use glutin::event::WindowEvent;
 use glutin::window::Window;
@@ -24,6 +25,7 @@ struct MainComponents {
 	renderer: Renderer,
 	window_info_tracker: WindowInfoTracker,
 	camera: Camera,
+	start_time: Instant,
 }
 
 impl MainComponents {
@@ -32,6 +34,7 @@ impl MainComponents {
 			renderer: Renderer::new(app.gl()),
 			window_info_tracker: WindowInfoTracker::new(app.window()),
 			camera: default(),
+			start_time: Instant::now(),
 		}
 	}
 }
@@ -42,7 +45,11 @@ impl AppComponent for MainComponents {
 	}
 
 	unsafe fn render(&self, gl: &GlContext) {
-		self.renderer.render(gl, &self.window_info_tracker, &self.camera);
+		self.renderer.render(gl, &self.window_info_tracker, &self.camera, self.start_time.elapsed().as_secs_f32());
+	}
+
+	fn update(&mut self) {
+
 	}
 }
 

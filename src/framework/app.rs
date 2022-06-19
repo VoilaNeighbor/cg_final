@@ -9,6 +9,7 @@ use crate::{GlContext, WinContext};
 pub trait AppComponent {
 	fn on_window_event(&mut self, event: &WindowEvent);
 	unsafe fn render(&self, gl: &GlContext);
+	fn update(&mut self);
 }
 
 pub struct App {
@@ -48,6 +49,7 @@ impl App {
 				self.gl.clear_color(0.2, 0.2, 0.2, 1.0);
 				self.gl.clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
 				component.render(&self.gl);
+				component.update();
 				self.win.swap_buffers().unwrap();
 			}
 			_ => {}
