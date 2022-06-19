@@ -2,7 +2,9 @@ pub use glow::Context as GlContext;
 use glutin::event::{Event, WindowEvent};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Window, WindowBuilder};
-use glutin::{ContextBuilder, ContextWrapper as WinContext, GlProfile, GlRequest, PossiblyCurrent};
+use glutin::{
+	Api, ContextBuilder, ContextWrapper as WinContext, GlProfile, GlRequest, PossiblyCurrent
+};
 
 pub trait Plugin {
 	fn render(&self, gl: &GlContext);
@@ -20,7 +22,7 @@ impl Default for App {
 		let event_loop = EventLoop::new();
 		let window_builder = WindowBuilder::new().with_title("CG Final Project");
 		let context = ContextBuilder::new()
-			.with_gl(GlRequest::Latest)
+			.with_gl(GlRequest::Specific(Api::OpenGl, (4, 6)))
 			.with_gl_profile(GlProfile::Core)
 			.build_windowed(window_builder, &event_loop)
 			.unwrap();
@@ -47,14 +49,14 @@ impl App {
 	where
 		F: FnOnce(&GlContext) -> Box<dyn Plugin>,
 	{
-		self.plugins.push(builder(&mut self.gl_ctx));
+		self.plugins.push(builder(&self.gl_ctx));
 		self
 	}
 
 	pub fn run(self) {
 		self.event_loop.run(move |event, _, ctrl| match event {
 			Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => *ctrl = ControlFlow::Exit,
-			Event::RedrawRequested(_) => {
+			Event::MainEventsCleared => {
 				for p in &self.plugins {
 					p.render(&self.gl_ctx);
 				}
