@@ -70,6 +70,19 @@ const ELEMENTS: [u8; 36] = [
 	20, 21, 22, 22, 23, 20, // bottom
 ];
 
+const CUBES: [Vector3<f32>; 10] = [
+	Vector3::new(0.0, 0.0, 0.0),
+	Vector3::new(2.0, 5.0, -15.0),
+	Vector3::new(-1.5, -2.2, -2.5),
+	Vector3::new(-3.8, -2.0, -12.3),
+	Vector3::new(2.4, -0.4, -3.5),
+	Vector3::new(-1.7, 3.0, -7.5),
+	Vector3::new(1.3, -2.0, -2.5),
+	Vector3::new(1.5, 2.0, -2.5),
+	Vector3::new(1.5, 0.2, -1.5),
+	Vector3::new(-1.3, 1.0, -1.5),
+];
+
 pub struct Renderer {
 	program: NativeProgram,
 	start: Instant,
@@ -134,10 +147,6 @@ impl Renderer {
 		unsafe {
 			let time = self.start.elapsed().as_secs_f32();
 
-			let rotation_axis = Vector3::new(3.0, 5.0, 7.0);
-			let rotation = Matrix4::from_axis_angle(&Unit::new_normalize(rotation_axis), time);
-			let translation = Matrix4::new_translation(&Vector3::new(time.cos(), time.sin(), 0.0));
-
 			let view = Matrix4::new(
 				1.0, 0.0, 0.0, 0.0,
 				0.0, 1.0, 0.0, 0.0,
@@ -148,13 +157,19 @@ impl Renderer {
 			let aspect = window_info.width as f32 / window_info.height as f32;
 			let projection = Matrix4::new_perspective(aspect, PI * 0.3, 0.1, 100.0);
 
-			gl.uniform_matrix_4_f32_slice(
-				gl.get_uniform_location(self.program, "mvp").as_ref(),
-				false,
-				(projection * view * translation * rotation).as_slice(),
-			);
+			for (i, cube) in CUBES.iter().enumerate() {
+				let rotation_axis = Unit::new_normalize(Vector3::new(3.0, 5.0, 7.0));
+				let rotation = Matrix4::from_axis_angle(&rotation_axis, time * (i as f32 * 0.8 + 1.0));
+				let translation = Matrix4::new_translation(cube);
 
-			gl.draw_elements(TRIANGLES, ELEMENTS.len() as i32, UNSIGNED_BYTE, 0);
+				gl.uniform_matrix_4_f32_slice(
+					gl.get_uniform_location(self.program, "mvp").as_ref(),
+					false,
+					(projection * view * translation * rotation).as_slice(),
+				);
+
+				gl.draw_elements(TRIANGLES, ELEMENTS.len() as i32, UNSIGNED_BYTE, 0);
+			}
 		}
 	}
 }

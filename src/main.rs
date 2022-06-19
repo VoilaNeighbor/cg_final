@@ -7,12 +7,12 @@ use glutin::window::Window;
 use glutin::{ContextWrapper, PossiblyCurrent};
 
 use crate::framework::app::{App, AppComponent};
+use crate::graphics::renderer::Renderer;
 use crate::misc::window_info_tracker::WindowInfoTracker;
-use crate::render::renderer::Renderer;
 
 mod framework;
+mod graphics;
 mod misc;
-mod render;
 
 pub type GlContext = glow::Context;
 pub type WinContext = ContextWrapper<PossiblyCurrent, Window>;
