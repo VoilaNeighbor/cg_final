@@ -2,7 +2,7 @@ use nalgebra::{Matrix4, Point3, Vector3};
 
 pub struct Camera {
 	pub position: Point3<f32>,
-	pub direction: Vector3<f32>,
+	direction: Vector3<f32>,
 }
 
 impl Default for Camera {
@@ -23,7 +23,21 @@ impl Camera {
 	}
 
 	pub fn up(&self) -> Vector3<f32> {
-		let right = self.direction.cross(&Vector3::y());
-		right.cross(&self.direction)
+		self.right().cross(&self.direction)
+	}
+
+	/// The camera is always level.
+	pub fn right(&self) -> Vector3<f32> {
+		let result = self.direction.cross(&Vector3::y());
+		assert!(result.y.abs() < 0.00001);
+		result
+	}
+
+	pub fn direction(&self) -> Vector3<f32> {
+		self.direction
+	}
+
+	pub fn set_direction(&mut self, direction: Vector3<f32>) {
+		self.direction = direction.normalize();
 	}
 }

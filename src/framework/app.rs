@@ -1,5 +1,5 @@
 use glow::{HasContext, COLOR_BUFFER_BIT, DEPTH_BUFFER_BIT, DEPTH_TEST};
-use glutin::event::{Event, WindowEvent};
+use glutin::event::{DeviceEvent, Event, WindowEvent};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::{Window, WindowBuilder};
 use glutin::{Api, ContextBuilder, GlProfile, GlRequest};
@@ -8,8 +8,9 @@ use crate::{GlContext, WinContext};
 
 pub trait AppComponent {
 	fn on_window_event(&mut self, event: &WindowEvent);
-	unsafe fn render(&self, gl: &GlContext);
+	fn on_device_event(&mut self, event: &DeviceEvent);
 	fn update(&mut self);
+	unsafe fn render(&self, gl: &GlContext);
 }
 
 pub struct App {
@@ -51,6 +52,9 @@ impl App {
 				component.render(&self.gl);
 				component.update();
 				self.win.swap_buffers().unwrap();
+			}
+			Event::DeviceEvent { event, .. } => {
+				component.on_device_event(&event);
 			}
 			_ => {}
 		})
