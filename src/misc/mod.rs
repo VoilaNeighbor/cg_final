@@ -1,4 +1,5 @@
 pub mod window_info_tracker;
+pub mod clock;
 
 pub const fn as_bytes<T: Sized>(p: &[T]) -> &[u8] {
 	let len = std::mem::size_of_val(p);

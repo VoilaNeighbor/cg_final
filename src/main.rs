@@ -14,6 +14,7 @@ use crate::framework::app::{App, AppComponent};
 use crate::graphics::camera::Camera;
 use crate::graphics::renderer::Renderer;
 use crate::interaction::camera_controller::CameraController;
+use crate::misc::clock::Clock;
 use crate::misc::window_info_tracker::WindowInfoTracker;
 
 mod framework;
@@ -28,7 +29,7 @@ struct MainComponents {
 	renderer: Renderer,
 	wit: WindowInfoTracker,
 	cc: CameraController,
-	start_time: Instant,
+	clock: Clock,
 }
 
 impl MainComponents {
@@ -37,12 +38,8 @@ impl MainComponents {
 			renderer: Renderer::new(app.gl()),
 			wit: WindowInfoTracker::new(app.window()),
 			cc: default(),
-			start_time: Instant::now(),
+			clock: Clock::default(),
 		}
-	}
-
-	fn now(&self) -> f32 {
-		self.start_time.elapsed().as_secs_f32()
 	}
 }
 
@@ -53,14 +50,15 @@ impl AppComponent for MainComponents {
 	}
 
 	fn on_device_event(&mut self, event: &DeviceEvent) {
-		self.cc.on_device_event(event);
+		self.cc.on_device_event(event, &self.clock);
 	}
 
 	unsafe fn render(&self, gl: &GlContext) {
-		self.renderer.render(gl, &self.wit, self.cc.camera(), self.now());
+		self.renderer.render(gl, &self.wit, self.cc.camera(), &self.clock);
 	}
 
 	fn update(&mut self) {
+		self.clock.update();
 	}
 }
 

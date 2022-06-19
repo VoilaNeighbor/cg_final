@@ -9,7 +9,7 @@ use nalgebra::{Matrix4, Unit, Vector3};
 use crate::graphics::camera::Camera;
 use crate::misc::as_bytes;
 use crate::misc::window_info_tracker::WindowInfoTracker;
-use crate::GlContext;
+use crate::{GlContext, Clock};
 
 #[repr(C, packed)]
 struct Vertex {
@@ -142,13 +142,13 @@ impl Renderer {
 	}
 
 	#[rustfmt::skip]
-	pub unsafe fn render(&self, gl: &GlContext, window_info: &WindowInfoTracker, camera: &Camera, time: f32) {
+	pub unsafe fn render(&self, gl: &GlContext, window_info: &WindowInfoTracker, camera: &Camera, clock: &Clock) {
 		let aspect = window_info.width as f32 / window_info.height as f32;
 		let projection = Matrix4::new_perspective(aspect, PI * 0.3, 0.1, 100.0);
 
 		for (i, cube) in CUBES.iter().enumerate() {
 			let rotation_axis = Unit::new_normalize(Vector3::new(3.0, 5.0, 7.0));
-			let rotation = Matrix4::from_axis_angle(&rotation_axis, time * (i as f32 * 0.8 + 1.0));
+			let rotation = Matrix4::from_axis_angle(&rotation_axis, clock.time() * (i as f32 * 0.8 + 1.0));
 			let translation = Matrix4::new_translation(cube);
 
 			gl.uniform_matrix_4_f32_slice(
