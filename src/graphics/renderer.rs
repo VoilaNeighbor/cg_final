@@ -1,6 +1,5 @@
 use std::f32::consts::PI;
 use std::mem::size_of;
-use std::time::Instant;
 
 use glow::{
 	HasContext, NativeProgram, NativeTexture, ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER, FLOAT, FRAGMENT_SHADER, NEAREST, RGBA, RGBA8, STATIC_DRAW, TEXTURE0, TEXTURE_2D, TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER, TRIANGLES, UNSIGNED_BYTE, VERTEX_SHADER

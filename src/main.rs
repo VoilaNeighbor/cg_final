@@ -8,6 +8,7 @@ use std::time::Instant;
 use glutin::event::WindowEvent;
 use glutin::window::Window;
 use glutin::{ContextWrapper, PossiblyCurrent};
+use nalgebra::Point3;
 
 use crate::framework::app::{App, AppComponent};
 use crate::graphics::camera::Camera;
@@ -37,6 +38,10 @@ impl MainComponents {
 			start_time: Instant::now(),
 		}
 	}
+
+	fn now(&self) -> f32 {
+		self.start_time.elapsed().as_secs_f32()
+	}
 }
 
 impl AppComponent for MainComponents {
@@ -45,11 +50,16 @@ impl AppComponent for MainComponents {
 	}
 
 	unsafe fn render(&self, gl: &GlContext) {
-		self.renderer.render(gl, &self.window_info_tracker, &self.camera, self.start_time.elapsed().as_secs_f32());
+		self.renderer.render(gl, &self.window_info_tracker, &self.camera, self.now());
 	}
 
 	fn update(&mut self) {
-
+		let radius = 10.0;
+		let time = self.now();
+		let x = time.sin() * radius;
+		let z = time.cos() * radius;
+		self.camera.position = Point3::new(x, 1.0, z);
+		self.camera.set_target(Point3::origin());
 	}
 }
 
